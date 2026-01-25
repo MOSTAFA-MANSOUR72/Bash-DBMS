@@ -5,14 +5,14 @@ DB_DIR="./databases"
 mkdir -p "$DB_DIR"
 
 
-function main_menu(){
+function main_menu() {
 	echo "====== Bash DBMS ======"
 	echo "1) Create Database"
 	echo "2) List Database"
 	echo "3) Connect To Database"
 	echo "4) Drop Database"
 	echo "5) Exit"
-	read -p "Choose an option: "choice
+	read -p "Choose an option: " choice
 
 	case $choice in 
 		1) create_database ;;
@@ -25,8 +25,14 @@ function main_menu(){
 }
 
 
-function create_database(){
+function create_database() {
 	read -p "Enter database name: " db_name
+
+	if [[ ! "$db_name" =~ ^[a-zA-Z0-9_]+$ ]]; then
+		echo "Invalid name! Only letters, numbers, and underscore allowed."
+		main_menu
+	fi
+
 	if [[ -d "$DB_DIR/$db_name" ]]; then
 		echo "Database already exists!"
 	else
@@ -36,7 +42,7 @@ function create_database(){
 	main_menu
 }
 
-function list_database(){
+function list_database() {
 	echo "Databases:"
 	ls "$DB_DIR"
 	main_menu
