@@ -65,7 +65,23 @@ function connect_database() {
 }
 
 function drop_database() {
-    echo "Not implemented yet."
+    read -p "Enter database name to dorp: " db_name
+
+    if [[ ! -d "$DB_DIR/$db_name" ]]; then
+	    echo "Database does not exists!"
+            main_menu
+	    return
+    fi
+
+    read -p "Are you sure you want to delete '$db_name'? (y/n): " confirm
+
+    if [[ "$confirm" == "y" || "$confirm" == "Y" ]]; then
+	    rm -rf "$DB_DIR/$db_name"
+	    echo "Database '$db_name' deleted successfully."
+    else
+	    echo "Drop database cancelled."
+    fi
+
     main_menu
 }
 
