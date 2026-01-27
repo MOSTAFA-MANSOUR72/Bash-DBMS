@@ -36,8 +36,67 @@ function list_options() {
 }
 
 function create_table() {
-    echo "Not implemented yet."
-    list_options 
+    read -p "Enter table name: " table_name
+
+    if [[ ! "$table_name" =~ ^[a-zA-Z0-9_]+$ ]]; then
+	    echo "Invalid table name! Only letters, numbers, and underscores allowed."
+            list_options
+	   return
+    fi
+
+    if [[ -f "$TABLES_DIR/$table_name" ]]; then
+	  echo "Table '$table_name' already exists!"
+	  list_options
+	 return
+    fi 
+
+    read -p "Enter number of columns: " col_count
+
+    if ! [[ "$col_count" =~ ^[1-9][0-9]*$ ]]; then
+	    echo "Invalid number of columns!"
+	    list_options
+	    return
+    fi
+
+    declare -a columns
+    declare -a types
+
+    for (( i=1; i<= col_count; i++ )); do
+	    read -p "Enter name for column $i: " col_name
+
+	    if [[ ! "$col_name" =~ ^[a-zA-Z0-9_]+$ ]]; then
+		 echo "Invalid column name! Only letters, numbers, and underscore"
+		 ((i--))
+		 continue
+	    fi
+	    columns+=("$col_name")
+
+	    read -p "Enter datatype for column '$col_name' (int/string): " dtype
+	    while [[ "$dtype" != "int" && "$dtype" != "string" ]]; do
+		    echo "Datatype must be 'int' or 'string'."
+		    read -p "Enter datatype for column '$col_name' (int/string): " dtype
+	    done
+	    types+=("$dtype")
+    done
+
+    echo "Columns: ${columns[*]}"
+    read -p "Choose primary key column: " pk
+    if [[ ! " ${columns[*]} " =~ "$pk"  ]]; then
+	echo "Primary key must be one of the columns."
+        list_options
+        return
+    fi
+
+    META_FILE="$META_DIR/$table_name.meta"
+    echo "columns=${columns[*]}" > "$META_FILE"
+    echo "types=${types[*]}" >> "$META_FILE"
+    echo "primary_key=$pk" >> "$META_FILE"
+
+    TABLE_FILE="$TABLES_DIR/$table_name"
+    touch "$TABLE_FILE"
+
+    echo "Table '$table_name' created successfully."
+    list_options    
 }
 
 function list_tables() {
