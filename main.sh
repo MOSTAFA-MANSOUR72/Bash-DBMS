@@ -6,6 +6,7 @@ mkdir -p "$DB_DIR"
 
 
 function main_menu() {
+	echo ""
 	echo "====== Bash DBMS ======"
 	echo "1) Create Database"
 	echo "2) List Database"
@@ -13,10 +14,10 @@ function main_menu() {
 	echo "4) Drop Database"
 	echo "5) Exit"
 	read -p "Choose an option: " choice
-
+	echo ""
 	case $choice in 
 		1) create_database ;;
-		2) list_databases ;;
+		2) list_database ;;
 		3) connect_database ;;
 		4) drop_database ;;
 		5) exit 0 ;;
@@ -51,7 +52,13 @@ function list_database() {
 
 
 function connect_database() {
-    echo "Not implemented yet."
+    read -p "Enter database name to connect: " db_name
+	if [[ ! -d "$DB_DIR/$db_name" ]]; then
+		echo "Database does not exist!"
+		main_menu
+	fi
+	echo "Connected to database '$db_name'."
+	. connection_operations.sh
     main_menu
 }
 
