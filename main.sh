@@ -56,10 +56,12 @@ function connect_database() {
 	if [[ ! -d "$DB_DIR/$db_name" ]]; then
 		echo "Database does not exist!"
 		main_menu
+		return
 	fi
+
 	echo "Connected to database '$db_name'."
-	. connection_operations.sh "$db_name"
-    main_menu
+	source ./connection_operations.sh "$db_name"
+        return
 }
 
 function drop_database() {
