@@ -58,7 +58,7 @@ function connect_database() {
 		main_menu
 	fi
 	echo "Connected to database '$db_name'."
-	. connection_operations.sh
+	. connection_operations.sh "$db_name"
     main_menu
 }
 
