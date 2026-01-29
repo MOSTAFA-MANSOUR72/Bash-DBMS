@@ -4,10 +4,9 @@
 db_name="$1"
 DB_PATH="./databases/$db_name"
 TABLES_DIR="$DB_PATH/tables"
-META_DIR="$DB_PATH/metadata"
 
 
-mkdir -p "$TABLES_DIR" "$META_DIR"
+mkdir -p "$TABLES_DIR"
 
 function list_options() {
     echo ""
@@ -50,50 +49,60 @@ function create_table() {
 	 return
     fi 
 
-    read -p "Enter number of columns: " col_count
-
-    if ! [[ "$col_count" =~ ^[1-9][0-9]*$ ]]; then
-	    echo "Invalid number of columns!"
-	    list_options
-	    return
-    fi
 
     declare -a columns
     declare -a types
 
-    for (( i=1; i<= col_count; i++ )); do
-	    read -p "Enter name for column $i: " col_name
+    while true; do
+        read -p "Enter name for column $i: " col_name
 
 	    if [[ ! "$col_name" =~ ^[a-zA-Z0-9_]+$ ]]; then
 		 echo "Invalid column name! Only letters, numbers, and underscore"
-		 ((i--))
 		 continue
 	    fi
+        
+        if [[ " ${columns[*]} " =~ " $col_name " ]]; then
+            echo "Column '$col_name' already exists. Choose a different name."
+            continue
+        fi 
+
 	    columns+=("$col_name")
 
-	    read -p "Enter datatype for column '$col_name' (int/string): " dtype
-	    while [[ "$dtype" != "int" && "$dtype" != "string" ]]; do
-		    echo "Datatype must be 'int' or 'string'."
-		    read -p "Enter datatype for column '$col_name' (int/string): " dtype
+	    read -p "Enter datatype for column '$col_name' (number/string): " dtype
+
+	    while [[ "$dtype" != "number" && "$dtype" != "string" ]]; do
+		    echo "Datatype must be 'number' or 'string'."
+		    read -p "Enter datatype for column '$col_name' (number/string): " dtype
 	    done
+
 	    types+=("$dtype")
+	    
+        read -p "Add another column? (y/n): " ans
+        if [[ "$ans" != "y" ]]; then
+            break
+        fi
     done
 
     echo "Columns: ${columns[*]}"
     read -p "Choose primary key column: " pk
-    if [[ ! " ${columns[*]} " =~ "$pk"  ]]; then
-	echo "Primary key must be one of the columns."
-        list_options
-        return
-    fi
+    
+    #loop until the pk entered is one of the columns in columns array
+    while [[ ! " ${columns[*]} " =~ " $pk " ]]; do
+        echo "Primary key must be one of the defined columns."
+        read -p "Choose primary key column: " pk
+    done
+    
+    TABLE_DIR="$TABLES_DIR/$table_name"
+    TABLE_FILE="$TABLE_DIR/$table_name"
+    META_FILE="$TABLE_DIR/meta.meta"
 
-    META_FILE="$META_DIR/$table_name.meta"
+    mkdir -p "$TABLE_DIR"
+    touch "$TABLE_FILE"
+    touch "$META_FILE"
+
     echo "columns=${columns[*]}" > "$META_FILE"
     echo "types=${types[*]}" >> "$META_FILE"
     echo "primary_key=$pk" >> "$META_FILE"
-
-    TABLE_FILE="$TABLES_DIR/$table_name"
-    touch "$TABLE_FILE"
 
     echo "Table '$table_name' created successfully."
     list_options    
