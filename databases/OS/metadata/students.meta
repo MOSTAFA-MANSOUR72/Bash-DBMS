@@ -1,3 +1,0 @@
-columns=id name age
-types=int string int
-primary_key=id

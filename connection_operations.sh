@@ -124,7 +124,55 @@ function drop_table() {
 }
 
 function insert_into_table() {
-    echo "Not implemented yet."
+    read -p "Enter table name to insert into: " table_name
+    if [[ ! -f "$TABLES_DIR/$table_name/$table_name" ]]; then
+        echo "Table '$table_name' does not exist!"
+        list_options
+        return
+    fi
+
+    meta_file="$TABLES_DIR/$table_name/meta.meta"
+    TABLE_FILE="$TABLES_DIR/$table_name/$table_name"
+
+    col_line=$(grep "^columns=" "$meta_file")
+    type_line=$(grep "^types=" "$meta_file")
+    pk_line=$(grep "^primary_key=" "$meta_file")
+
+
+    COL_NUM=$(echo "$col_line" | cut -d'=' -f2 | wc -w)
+    TYPES=($(echo "$type_line" | cut -d'=' -f2))
+    COL_NAMES=($(echo "$col_line" | cut -d'=' -f2))
+
+    PRIMARY_KEY=$(echo "$pk_line" | cut -d'=' -f2)
+
+    declare -a values
+
+    for (( i=0; i<COL_NUM; i++ )); do
+        col_name=${COL_NAMES[i]}
+        col_type=${TYPES[i]}
+        while true; do
+            read -p "Enter value for column '$col_name' (type: $col_type): " value
+            if [[ "$col_type" == "number" ]]; then
+                if ! [[ "$value" =~ ^-?[0-9]+(\.[0-9]+)?$ ]]; then
+                    echo "Invalid input! Please enter a valid number."
+                    continue
+                fi
+            fi
+            
+            if [[ "$col_name" == "$PRIMARY_KEY" ]]; then
+                if grep -q "^$value\b" "$TABLE_FILE"; then
+                    echo "Primary key violation! Value '$value' for column '$col_name' already exists."
+                    continue
+                fi
+            fi
+
+            values+=("$value")
+            break
+        done
+    done
+
+    echo "${values[*]}" >> "$TABLE_FILE"
+    echo "Record inserted successfully into table '$table_name'."
     list_options 
 }
 
