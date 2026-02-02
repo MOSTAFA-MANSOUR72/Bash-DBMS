@@ -177,8 +177,69 @@ function insert_into_table() {
 }
 
 function select_from_table() {
-    echo "Not implemented yet."
-    list_options 
+    read -p "Enter table name to select from: " table_name
+
+    TABLE_FILE="$TABLES_DIR/$table_name/$table_name"
+    META_FILE="$TABLES_DIR/$table_name/meta.meta"
+
+    if [[ ! -f "$TABLE_FILE" ]]; then
+	    echo "Table '$table_name' does not exists!"
+            list_options
+	    return
+    fi
+
+    COL_NAMES=($(grep "^columns=" "$META_FILE" | cut -d'=' -f2))
+
+    echo ""
+    echo "1) Select all columns"
+    echo "2) Select specific columns"
+    read -p "Choose option: " opt
+    echo ""
+
+    if [[ "$opt" == "1" ]]; then
+	   printf "%-15s" "${COL_NAMES[@]}"
+	   echo
+	   echo "-------------------------------------------"
+
+	   awk '{
+	        for(i=1;i<=NF;i++) printf "%-15s", $i;
+		print ""
+	    }' "$TABLE_FILE"
+    elif [[ "$opt" == "2" ]]; then
+        echo "Available columns: ${COL_NAMES[*]}"
+        read -p "Enter column names separated by space: " selected_cols
+        
+        declare -a indexes
+        for col in $selected_cols; do
+	    for i in "${!COL_NAMES[@]}"; do
+	        if [[ "${COL_NAMES[$I]}" == "$col" ]]; then
+	            indexes+=($((i+1)))
+                fi
+            done
+        done
+        
+        if [[ ${#indexes[@]} -eq 0 ]]; then
+	    echo "No valid columns selected!"
+            list_options
+            return
+        fi
+
+
+        for idx in "${indexes[@]}"; do
+	    printf "%-15s" "${COL_NAMES[$((idx-1))]}"
+        done
+        echo
+        echo "-------------------------------------------"
+        
+        awk -v idxs="${indexes[*]}" '{
+            n =  split(idxs, arr, " ")
+	    for(i=1;i<=n;i++) printf "%-15s", $arr[i]
+	    print ""
+        }' "$TABLE_FILE"
+    else
+       echo "Invalid option!"
+    fi
+    list_options    
 }
 
 function delete_from_table() {
