@@ -242,10 +242,77 @@ function select_from_table() {
     list_options    
 }
 
+
 function delete_from_table() {
-    echo "Not implemented yet."
-    list_options 
+    read -p "Enter table name to delete from: " table_name
+
+    TABLE_FILE="$TABLES_DIR/$table_name/$table_name"
+    META_FILE="$TABLES_DIR/$table_name/meta.meta"
+
+    if [[ ! -f "$TABLE_FILE" ]]; then
+        echo "Table '$table_name' does not exist!"
+        list_options
+        return
+    fi
+
+    # ===== Helper function to trim whitespace/newline =====
+    trim() {
+        local var="$*"
+        var="${var#"${var%%[![:space:]]*}"}"  # remove leading spaces
+        var="${var%"${var##*[![:space:]]}"}"  # remove trailing spaces
+        echo -n "$var"
+    }
+
+    # ===== Read metadata safely =====
+    PRIMARY_KEY=$(awk -F= '$1=="primary_key"{print $2}' "$META_FILE")
+    PRIMARY_KEY=$(trim "$PRIMARY_KEY")
+
+    COL_NAMES=()
+    read -r cols_line < <(awk -F= '$1=="columns"{print $2}' "$META_FILE")
+    for col in $cols_line; do
+        COL_NAMES+=("$(trim "$col")")
+    done
+
+    # ===== Find primary key index =====
+    PK_INDEX=0
+    for i in "${!COL_NAMES[@]}"; do
+        if [[ "${COL_NAMES[$i]}" == "$PRIMARY_KEY" ]]; then
+            PK_INDEX=$((i+1))
+            break
+        fi
+    done
+
+    if [[ $PK_INDEX -eq 0 ]]; then
+        echo "Primary key not found in metadata!"
+        list_options
+        return
+    fi
+
+    # ===== Ask for primary key value =====
+    read -p "Enter primary key value to delete: " pk_value
+
+    # ===== Check if record exists =====
+    if ! awk -v pk="$pk_value" -v idx="$PK_INDEX" '$idx == pk {found=1} END{exit !found}' "$TABLE_FILE"; then
+        echo "Record with primary key '$pk_value' not found!"
+        list_options
+        return
+    fi
+
+    # ===== Confirm deletion =====
+    read -p "Are you sure you want to delete this record? (y/n): " confirm
+    if [[ "$confirm" != "y" && "$confirm" != "Y" ]]; then
+        echo "Delete cancelled."
+        list_options
+        return
+    fi
+
+    # ===== Delete the record =====
+    awk -v pk="$pk_value" -v idx="$PK_INDEX" '$idx != pk { print }' "$TABLE_FILE" > "$TABLE_FILE.tmp" && mv "$TABLE_FILE.tmp" "$TABLE_FILE"
+
+    echo "Record deleted successfully."
+    list_options
 }
+
 
 function update_table() {
     echo "Not implemented yet."
