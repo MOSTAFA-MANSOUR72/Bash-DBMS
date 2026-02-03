@@ -119,7 +119,21 @@ function list_tables() {
 }
 
 function drop_table() {
-    echo "Not implemented yet."
+    read -p "Enter table name to drop: " table_name
+    TABLE_DIR="$TABLES_DIR/$table_name"
+    if [[ ! -d "$TABLE_DIR" ]]; then
+        echo "Table '$table_name' does not exist!"
+        list_options
+        return
+    fi
+    echo "Are you sure you want to drop table '$table_name'? This action cannot be undone."
+    read -p "Confirm (y/n): " confirm
+    if [[ "$confirm" == "y" ]]; then
+        rm -rf "$TABLE_DIR"
+        echo "Table '$table_name' dropped successfully."
+    else
+        echo "Table '$table_name' was not dropped."
+    fi
     list_options 
 }
 
