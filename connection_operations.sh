@@ -329,8 +329,142 @@ function delete_from_table() {
 
 
 function update_table() {
-    echo "Not implemented yet."
-    list_options 
+    # ===== Helper function to trim whitespace/newline =====
+    trim() {
+        local var="$*"
+        var="${var#"${var%%[![:space:]]*}"}"  # remove leading spaces
+        var="${var%"${var##*[![:space:]]}"}"  # remove trailing spaces
+        echo -n "$var"
+    }
+
+    read -p "Enter table name: " table_name
+    TABLE_DIR="$TABLES_DIR/$table_name"
+    TABLE_FILE="$TABLE_DIR/$table_name"
+    META_FILE="$TABLE_DIR/meta.meta"
+
+    if [[ ! -f "$META_FILE" ]]; then
+        echo "Table '$table_name' does not exist."
+        list_options
+        return
+    fi
+
+    # Read columns and types
+    columns_line=$(grep '^columns=' "$META_FILE")
+    types_line=$(grep '^types=' "$META_FILE")
+    columns=(${columns_line#columns=})
+    types=(${types_line#types=})
+
+    
+    echo "Choose operation:"
+    echo "1) Add column"
+    echo "2) Delete column"
+    echo "3) Update column datatype"
+    read -p "Enter option: " op
+
+    case $op in
+        1)
+            echo "Columns: ${columns[*]}"
+            read -p "Enter new column name: " new_col
+            if [[ " ${columns[*]} " =~ " $new_col " ]]; then
+                echo "Column already exists."
+                list_options
+                return
+            fi
+
+            read -p "Enter datatype for '$new_col' (number/string): " new_type
+            while [[ "$new_type" != "number" && "$new_type" != "string" ]]; do
+                echo "Datatype must be 'number' or 'string'."
+                read -p "Enter datatype for '$new_col' (number/string): " new_type
+            done
+            columns+=("$new_col")
+            types+=("$new_type")
+
+            # Update meta file
+            sed -i "s/^columns=.*/columns=${columns[*]}/" "$META_FILE"
+            sed -i "s/^types=.*/types=${types[*]}/" "$META_FILE"
+
+            # Add null to all rows
+            awk -v OFS=" " '{print $0, "null"}' "$TABLE_FILE" > "$TABLE_FILE.tmp" && mv "$TABLE_FILE.tmp" "$TABLE_FILE"
+            echo "Column '$new_col' added."
+            ;;
+        2)
+            echo "Columns: ${columns[*]}"
+            read -p "Enter column name to delete: " del_col
+            
+            PRIMARY_KEY=$(awk -F= '$1=="primary_key"{print $2}' "$META_FILE")
+            PRIMARY_KEY=$(trim "$PRIMARY_KEY")
+            if [[ "$del_col" == "$PRIMARY_KEY" ]]; then
+                echo "Cannot delete primary key column."
+                list_options
+                return
+            fi
+
+            idx=-1
+            for i in "${!columns[@]}"; do
+                if [[ "${columns[$i]}" == "$del_col" ]]; then
+                    idx=$i
+                    break
+                fi
+            done
+            if [[ $idx -eq -1 ]]; then
+                echo "Column not found."
+                list_options
+                return
+            fi
+            unset 'columns[idx]'
+            unset 'types[idx]'
+
+            columns=("${columns[@]}")
+            types=("${types[@]}")
+            sed -i "s/^columns=.*/columns=${columns[*]}/" "$META_FILE"
+            sed -i "s/^types=.*/types=${types[*]}/" "$META_FILE"
+            # Remove column from all rows
+            awk -v del_idx=$((idx+1)) '{for(i=1;i<=NF;i++) if(i!=del_idx) printf $i (i<NF?OFS:""); print ""}' "$TABLE_FILE" > "$TABLE_FILE.tmp" && mv "$TABLE_FILE.tmp" "$TABLE_FILE"
+            echo "Column '$del_col' deleted."
+            ;;
+        3)
+            echo "Columns: ${columns[*]}"
+            read -p "Enter column name to update datatype: " upd_col
+
+            PRIMARY_KEY=$(awk -F= '$1=="primary_key"{print $2}' "$META_FILE")
+            PRIMARY_KEY=$(trim "$PRIMARY_KEY")
+            if [[ "$upd_col" == "$PRIMARY_KEY" ]]; then
+                echo "Cannot update datatype of primary key column."
+                list_options
+                return
+            fi
+
+            idx=-1
+            for i in "${!columns[@]}"; do
+                if [[ "${columns[$i]}" == "$upd_col" ]]; then
+                    idx=$i
+                    break
+                fi
+            done
+
+            if [[ $idx -eq -1 ]]; then
+                echo "Column not found."
+                list_options
+                return
+            fi
+
+            read -p "Enter new datatype (number/string): " new_type
+            while [[ "$new_type" != "number" && "$new_type" != "string" ]]; do
+                echo "Datatype must be 'number' or 'string'."
+                read -p "Enter new datatype (number/string): " new_type
+            done
+            
+            types[$idx]="$new_type"
+            sed -i "s/^types=.*/types=${types[*]}/" "$META_FILE"
+            # Set all values in that column to null
+            awk -v upd_idx=$((idx+1)) '{for(i=1;i<=NF;i++) if(i==upd_idx) printf "null" (i<NF?OFS:""); else printf $i (i<NF?OFS:""); print ""}' "$TABLE_FILE" > "$TABLE_FILE.tmp" && mv "$TABLE_FILE.tmp" "$TABLE_FILE"
+            echo "Datatype for '$upd_col' updated and all values set to null."
+            ;;
+        *)
+            echo "Invalid option."
+            ;;
+    esac
+    list_options
 }
 
 
