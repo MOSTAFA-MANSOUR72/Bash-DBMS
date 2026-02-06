@@ -17,8 +17,9 @@ function list_options() {
     echo "4) Insert into Table"
     echo "5) Select from Table"
     echo "6) Delete from Table"
-    echo "7) Update Table"
-    echo "8) Back to Main Menu"
+    echo "7) Alter Table"
+    echo "8) Update Table"
+    echo "9) Back to Main Menu"
     read -p "Choose an option: " choice
     echo ""
     case $choice in 
@@ -28,8 +29,9 @@ function list_options() {
         4) insert_into_table  ;;
         5) select_from_table  ;;
         6) delete_from_table  ;;
-        7) update_table  ;;
-        8) main_menu ;;
+        7) alter_table  ;;
+        8) update_table  ;;
+        9) main_menu ;;
         *) echo "Invalid option"; list_options  ;;
     esac 
 }
@@ -328,7 +330,7 @@ function delete_from_table() {
 }
 
 
-function update_table() {
+function alter_table() {
     # ===== Helper function to trim whitespace/newline =====
     trim() {
         local var="$*"
@@ -464,6 +466,95 @@ function update_table() {
             echo "Invalid option."
             ;;
     esac
+    list_options
+}
+
+function update_table() {
+    read -p "Enter table name to update: " table_name
+
+    TABLE_FILE="$TABLES_DIR/$table_name/$table_name"
+    META_FILE="$TABLES_DIR/$table_name/meta.meta"
+
+    if [[ ! -f "$TABLE_FILE" ]]; then
+        echo "Table '$table_name' does not exist!"
+        list_options
+        return
+    fi
+
+    # ===== Helper function to trim whitespace/newline =====
+    trim() {
+        local var="$*"
+        var="${var#"${var%%[![:space:]]*}"}"  # remove leading spaces
+        var="${var%"${var##*[![:space:]]}"}"  # remove trailing spaces
+        echo -n "$var"
+    }
+
+    # ===== Read metadata safely =====
+    PRIMARY_KEY=$(awk -F= '$1=="primary_key"{print $2}' "$META_FILE")
+    PRIMARY_KEY=$(trim "$PRIMARY_KEY")
+
+   # Read columns and types
+    columns_line=$(grep '^columns=' "$META_FILE")
+    types_line=$(grep '^types=' "$META_FILE")
+    columns=(${columns_line#columns=})
+    types=(${types_line#types=})
+
+
+    # ===== Ask for primary key value =====
+    read -p "Enter primary key value to update: " pk_value
+
+    # ===== Check if record exists =====
+    if ! awk -v pk="$pk_value" '$1 == pk {found=1} END{exit !found}' "$TABLE_FILE"; then
+        echo "Record with primary key '$pk_value' not found!"
+        list_options
+        return
+    fi
+
+    # ===== Ask which column to update =====
+    while true; do
+        echo "Columns: ${columns[*]}"
+        read -p "Enter column name to update: " upd_col
+
+        if [[ "$upd_col" == "$PRIMARY_KEY" ]]; then
+            echo "Cannot update primary key column."
+            continue
+        fi
+
+        idx=-1
+        for i in "${!columns[@]}"; do
+            if [[ "${columns[$i]}" == "$upd_col" ]]; then
+                idx=$i
+                break
+            fi
+        done
+
+        if [[ $idx -eq -1 ]]; then
+            echo "Column not found."
+            continue
+        fi
+
+        read -p "Enter new value for '$upd_col': " new_value
+
+        # Validate datatype
+        col_type=${types[$idx]}
+        if [[ "$col_type" == "number" ]]; then
+            if ! [[ "$new_value" =~ ^-?[0-9]+(\.[0-9]+)?$ ]]; then
+                echo "Invalid input! Please enter a valid number."
+                continue
+            fi
+        fi
+
+        # Update the column of index idx  the record  with (id)primary key pk_value to new_value using begin body end
+        awk -v pk="$pk_value" -v idx=$((idx+1)) -v new_val="$new_value" -v OFS=" " '{
+            if($1 == pk) {
+                $idx = new_val 
+            }
+            print
+        }' "$TABLE_FILE" > "$TABLE_FILE.tmp" && mv "$TABLE_FILE.tmp" "$TABLE_FILE"
+
+        echo "Record updated successfully."
+        break
+    done
     list_options
 }
 
