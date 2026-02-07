@@ -225,21 +225,25 @@ function select_from_table() {
         echo "Available columns: ${COL_NAMES[*]}"
         read -p "Enter column names separated by space: " selected_cols
         
-        declare -a indexes
+	declare -a indexes=()
+
         for col in $selected_cols; do
+	    found=false	
 	    for i in "${!COL_NAMES[@]}"; do
-	        if [[ "${COL_NAMES[$I]}" == "$col" ]]; then
+	        if [[ "${COL_NAMES[$i]}" == "$col" ]]; then
 	            indexes+=($((i+1)))
+		    found=true
+		    break
                 fi
             done
+
+	    if [[ "$found" == false ]]; then
+		    echo "Column '$col' does not exist!"
+		    list_options
+		    return
+	    fi	    
         done
         
-        if [[ ${#indexes[@]} -eq 0 ]]; then
-	    echo "No valid columns selected!"
-            list_options
-            return
-        fi
-
 
         for idx in "${indexes[@]}"; do
 	    printf "%-15s" "${COL_NAMES[$((idx-1))]}"
@@ -247,16 +251,21 @@ function select_from_table() {
         echo
         echo "-------------------------------------------"
         
-        awk -v idxs="${indexes[*]}" '{
+        awk -v idxs="${indexes[*]}" '
+	BEGIN{
             n =  split(idxs, arr, " ")
-	    for(i=1;i<=n;i++) printf "%-15s", $arr[i]
+        }
+	{
+	    for(i=1;i<=n;i++){
+		 printf "%-15s", $arr[i]
+	    }
 	    print ""
-        }' "$TABLE_FILE"
+        }' "$TABLE_FILE"    
     else
-       echo "Invalid option!"
+	echo "Invalid option!"
     fi
-    list_options    
-}
+    list_options
+}    
 
 
 function delete_from_table() {

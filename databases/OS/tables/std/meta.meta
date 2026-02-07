@@ -1,0 +1,3 @@
+columns=id name age
+types=number string number
+primary_key=id
