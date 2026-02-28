@@ -1,4 +1,4 @@
-# 🗄️ Bash DBMS – Lightweight Database Management System in Bash
+# Bash-DBMS – Lightweight Database Management System in Bash
 
 A simple **command-line Database Management System (DBMS)** built entirely using **Bash scripting**.
 
