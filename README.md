@@ -76,7 +76,7 @@ chmod +x connection_operations.sh
 ---
 
 ## 📁 Project Structure
-.
+```
 ├── main.sh
 ├── connection_operations.sh
 └── databases/
@@ -86,7 +86,7 @@ chmod +x connection_operations.sh
                 ├── <table_name>   (data file)
                 └── meta.meta      (metadata)
 
-
+```
 ---
 
 ## 🎯 Learning Goals
